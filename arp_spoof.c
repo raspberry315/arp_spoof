@@ -10,12 +10,12 @@ void make_arp(u_int8_t *packet, u_int8_t *src_mac, u_int8_t *dst_mac, u_int8_t *
     arp->prot_addr_size  = 4;
     arp->op              = htons(opcode);
                            
-    if(dst_mac != NULL) memcpy(arp->targ_hw_addr, dst_mac, 6);
-    else memcpy(arp->targ_hw_addr, "\xff\xff\xff\xff\xff\xff", 6);
+    if(dst_mac != NULL) memcpy(arp->targ_hw_addr, dst_mac, 6);				
+    else memcpy(arp->targ_hw_addr, "\xff\xff\xff\xff\xff\xff", 6);			// broadcast
 
     memcpy(arp->src_hw_addr, src_mac, 6);
     if(dst_mac != NULL) memcpy(arp->rcpt_hw_addr, dst_mac, 6);
-    else memcpy(arp->rcpt_hw_addr, "\x00\x00\x00\x00\x00\x00", 6);
+    else memcpy(arp->rcpt_hw_addr, "\x00\x00\x00\x00\x00\x00", 6);			// broadcast
     memcpy(arp->sndr_hw_addr, src_mac, 6);
     memcpy(arp->rcpt_ip_addr, dst_ip, 4);
     memcpy(arp->sndr_ip_addr, src_ip, 4);
@@ -23,8 +23,7 @@ void make_arp(u_int8_t *packet, u_int8_t *src_mac, u_int8_t *dst_mac, u_int8_t *
     free(arp);
 }
 
-void get_target_mac(u_int8_t *interface, u_int8_t *target_ip, u_int8_t *target_mac, u_int8_t *attacker_ip, u_int8_t *attacker_mac){
-    pcap_t *handler;
+void get_target_mac(pcap_t *handler, u_int8_t *interface, u_int8_t *target_ip, u_int8_t *target_mac, u_int8_t *attacker_ip, u_int8_t *attacker_mac){
     struct arp_packet *arp = malloc(sizeof(struct arp_packet));
     char errbuf[PCAP_ERRBUF_SIZE];
     struct pcap_pkthdr *header;
@@ -32,12 +31,6 @@ void get_target_mac(u_int8_t *interface, u_int8_t *target_ip, u_int8_t *target_m
     u_char packet[42];
     int length = sizeof(struct arp_packet);
     
-    handler = pcap_open_live(interface, BUFSIZ, 1, 1000, errbuf);
-    if(handler == NULL){
-        printf("%s\n", errbuf);
-        return;
-    }
-
     make_arp(packet, attacker_mac, NULL, attacker_ip, target_ip, 1);
     if(pcap_sendpacket(handler, packet, length) != 0){                      //arp broadcast
         printf("\nError Sending the packet\n");
@@ -145,8 +138,8 @@ void *thread_func(void *arg){
     printf("Attacker's IP : %d.%d.%d.%d\n", attacker_ip[0], attacker_ip[1], attacker_ip[2], attacker_ip[3]);
 
     //get sender & target's mac
-    get_target_mac(interface, sender_ip, sender_mac, attacker_ip, attacker_mac); 
-    get_target_mac(interface, target_ip, target_mac, attacker_ip, attacker_mac);
+    get_target_mac(handler, interface, sender_ip, sender_mac, attacker_ip, attacker_mac); 
+    get_target_mac(handler, interface, target_ip, target_mac, attacker_ip, attacker_mac);
     printf("Sender's MAC  : %02x:%02x:%02x:%02x:%02x:%02x\n", sender_mac[0], sender_mac[1], sender_mac[2], sender_mac[3], sender_mac[4], sender_mac[5]);
     printf("Target's MAC  : %02x:%02x:%02x:%02x:%02x:%02x\n", target_mac[0], target_mac[1], target_mac[2], target_mac[3], target_mac[4], target_mac[5]);
     
